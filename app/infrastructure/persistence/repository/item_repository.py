@@ -1,37 +1,40 @@
-from psycopg2.extensions import connection
+from sqlalchemy.orm import Session
 
 from app.domain.ports.item_repository_port import ItemRepositoryPort
 from app.domain.entities.item import Item
+from app.infrastructure.persistence.models.item import ItemModel
 
 
 class ItemRepository(ItemRepositoryPort):
-    def __init__(self, database_connection: connection):
-        self.database_connection = database_connection
 
-    def add_item(self, item: Item) -> None:
-        self.database_connection.execute(
-            'INSERT INTO items (name, description) VALUES ($1, $2)',
-            (item.name, item.description)
-        )
+    def __init__(self, session: Session):
+        self.session = session
 
-    def get_item(self, item_id: int) -> Item:
-        result = self.database_connection.fetch_one(
-            'SELECT id, name, description FROM items WHERE id = $1',
-            (item_id,)
+    async def add_item(self, item: Item) -> None:
+        model = ItemModel(
+            name=item.name,
+            description=item.description,
+            price=item.price,
+            user_id=item.user.id,
         )
-        if result:
-            return Item(*result)
-        else:
-            raise ItemNotFoundError()
+        self.session.add(model)
+        self.session.commit()
 
-    def get_all_items(self) -> List[Item]:
-        results = self.database_connection.fetch_all(
-            'SELECT id, name, description FROM items'
-        )
-        return [Item(*result) for result in results]
+    async def get_item(self, item_id: int) -> Item:
+        model = self.session.query(ItemModel).get(item_id)
+        return model.to_entity()
 
-    def update_item(self, item_id: int, item: Item) -> None:
-        result = self.database_connection.execute(
-            'UPDATE items SET name = $1, description = $2 WHERE id = $3',
-            (item.name, item.description, item_id)
+    async def update_item(self, item: Item) -> None:
+        model = ItemModel(
+            id=id,
+            name=item.name,
+            description=item.description,
+            price=item.price,
+            user_id=item.user.id,
         )
+        self.session.add(model)
+        self.session.commit()
+
+    async def delete_item(self, item_id: int) -> None:
+        self.session.query(ItemModel).filter(ItemModel.id == item_id).delete()
+        self.session.commit()

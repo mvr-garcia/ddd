@@ -1,32 +1,37 @@
-from app.domain.ports.user_repository_port import UserRepositoryPort
+from sqlalchemy.orm import Session
+
 from app.domain.entities.user import User
+from app.domain.ports.user_repository_port import UserRepositoryPort
+from app.infrastructure.persistence.models.user import UserModel
 
 
 class UserRepository(UserRepositoryPort):
 
-    def __init__(self, connection_pool: AbstractConnectionPool):
-        self.Session = scoped_session(sessionmaker(bind=connection_pool))
+    def __init__(self, session: Session):
+        self.session = session
 
-    def add_user(self, user: User):
-        session = self.Session()
-        session.add(user)
-        session.commit()
-        session.close()
+    async def add_user(self, user: User) -> None:
+        model = UserModel(
+            name=user.name,
+            email=user.email,
+            password=user.password,
+        )
+        self.session.add(model)
+        self.session.commit()
 
-    def get_user(self, user_id: int):
-        session = self.Session()
-        user = session.query(User).get(user_id)
-        session.close()
-        return user
+    async def get_user(self, user_id: int) -> User:
+        user = self.session.query(UserModel).get(user_id)
+        return user.to_entity()
 
-    def update_user(self, user: User):
-        session = self.Session()
-        session.commit()
-        session.close()
+    async def update_user(self, user: User) -> None:
+        model = UserModel(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            password=user.password,
+        )
+        self.session.add(model)
+        self.session.commit()
 
-    def delete_user(self, user_id: int):
-        session = self.Session()
-        user = self.get_user(user_id)
-        session.delete(user)
-        session.commit()
-        session.close()
+    async def delete_user(self, user_id: int) -> None:
+        self.session.query(UserModel).filter(UserModel.id == user_id).delete()
