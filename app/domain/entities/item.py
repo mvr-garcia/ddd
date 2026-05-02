@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 
 from app.domain.entities.user import User
 

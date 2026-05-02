@@ -1,28 +1,13 @@
 from fastapi import Depends
 
-from sqlalchemy.orm import Session
+from app.domain.interfaces.uow import IUnitOfWork
 
-from app.domain.services.item_service import ItemService
-from app.domain.services.user_service import UserService
-
-from app.infrastructure.persistence.db.session import SessionLocal
-from app.infrastructure.persistence.repository.user_repository import UserRepository
-from app.infrastructure.persistence.repository.item_repository import ItemRepository
+from app.factories import get_settings
+from app.infrastructure.persistence.db.session import get_engine, get_session_maker
+from app.infrastructure.persistence.uow import UnitOfWork
 
 
-async def get_db() -> Session:
-    _session = SessionLocal()
-    try:
-        yield _session
-    finally:
-        _session.close()
-
-
-def get_item_service(db: Session = Depends(get_db)) -> ItemService:
-    repo = ItemRepository(session=db)
-    return ItemService(repository=repo)
-
-
-def get_user_service(db: Session = Depends(get_db)) -> UserService:
-    repo = UserRepository(session=db)
-    return UserService(repository=repo)
+async def get_uow(*, settings = Depends(get_settings)) -> IUnitOfWork:
+    engine = await get_engine(settings)
+    session_maker = await get_session_maker(engine=engine)
+    return UnitOfWork(session_maker=session_maker)

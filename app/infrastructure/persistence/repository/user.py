@@ -1,13 +1,13 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.user import User
-from app.domain.ports.user_repository_port import UserRepositoryPort
+from app.domain.interfaces.repositories import IUserRepository
 from app.infrastructure.persistence.models.user import UserModel
 
 
-class UserRepository(UserRepositoryPort):
+class UserRepository(IUserRepository):
 
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self.session = session
 
     async def add_user(self, user: User) -> None:
@@ -17,10 +17,10 @@ class UserRepository(UserRepositoryPort):
             password=user.password,
         )
         self.session.add(model)
-        self.session.commit()
+        await self.session.commit()
 
     async def get_user(self, user_id: int) -> User:
-        user = self.session.query(UserModel).get(user_id)
+        user = await self.session.query(UserModel).get(user_id)
         return user.to_entity()
 
     async def update_user(self, user: User) -> None:
@@ -31,7 +31,8 @@ class UserRepository(UserRepositoryPort):
             password=user.password,
         )
         self.session.add(model)
-        self.session.commit()
+        await self.session.commit()
 
     async def delete_user(self, user_id: int) -> None:
-        self.session.query(UserModel).filter(UserModel.id == user_id).delete()
+        await self.session.query(UserModel).filter(UserModel.id == user_id).delete()
+        await self.session.commit()
